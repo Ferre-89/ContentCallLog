@@ -1,0 +1,1 @@
+Simple example of usages for a content provider. Here, we're asking for two permissions just for practical purposes. Those are WRITE_CALL_LOG and READ_CALL_LOG. We're adding a simulated phone call programmatically, updating its data, and then deleting it.
