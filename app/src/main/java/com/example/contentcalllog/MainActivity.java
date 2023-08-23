@@ -4,11 +4,9 @@ import static android.Manifest.permission.READ_CALL_LOG;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.content.pm.PackageManager;
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,6 +15,7 @@ import android.text.format.DateFormat;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.util.Date;
 import java.util.List;
 
 import pub.devrel.easypermissions.EasyPermissions;
@@ -30,8 +29,9 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         setContentView(R.layout.activity_main);
 
         Log.d("Rodrigo", "onCreate");
-        if (EasyPermissions.hasPermissions(this, READ_CALL_LOG)) {
-            doTheStuff();
+        if (EasyPermissions.hasPermissions(this, READ_CALL_LOG, Manifest.permission.WRITE_CALL_LOG)) {
+            managingContentProvider();
+            listCalls();
         } else {
             askPermission();
         }
@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
 
     private void askPermission() {
         EasyPermissions.requestPermissions(
-                new PermissionRequest.Builder(this, 123, Manifest.permission.READ_CALL_LOG)
+                new PermissionRequest.Builder(this, 123, Manifest.permission.READ_CALL_LOG, Manifest.permission.WRITE_CALL_LOG)
                         .setRationale("Test Permissions")
                         .setPositiveButtonText("Yes")
                         .setNegativeButtonText("No")
@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
     @Override
     public void onPermissionsGranted(int requestCode, @NonNull List<String> perms) {
         Log.d("Rodrigo", "onPermissionsGranted");
-        doTheStuff();
+        listCalls();
     }
 
     @Override
@@ -66,14 +66,48 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
     }
 
-    private void doTheStuff() {
+    private void managingContentProvider() {
+
+        // Creating ContentValues and adding personalized data.
+        ContentValues values = new ContentValues();
+        values.put(CallLog.Calls.DATE, new Date().getTime());
+        values.put(CallLog.Calls.NUMBER, "555555555");
+        values.put(CallLog.Calls.DURATION, "55");
+        values.put(CallLog.Calls.TYPE, CallLog.Calls.INCOMING_TYPE);
+
+        // Inserting data. The variable "newElement" saves the amount of changes.
+        Uri newElement = getContentResolver().insert(CallLog.Calls.CONTENT_URI, values);
+
+        // Updating data.
+        ContentValues values2 = new ContentValues();
+        values2.put(CallLog.Calls.NUMBER, "444444444");
+        getContentResolver().update(CallLog.Calls.CONTENT_URI, values2, "Number = 555555555", null);
+
+
+        // Deleting elements from the Content Provider.
+        getContentResolver().delete(CallLog.Calls.CONTENT_URI, "number = 555555555", null);
+
+    }
+
+    private void listCalls() {
         Log.d("Rodrigo", "doTheStuff");
 
         String[] CALL_TYPE = {"", "incoming", "outgoing", "missed", "voicemail", "canceled", "blocked list"};
         TextView out = findViewById(R.id.out);
         Uri calls = Uri.parse("content://call_log/calls");
 
-        Cursor c = getContentResolver().query(calls, null, null, null);
+//        Cursor c = getContentResolver().query(calls, null, null, null);
+
+        String[] projection = new String[] {CallLog.Calls.DATE, CallLog.Calls.DURATION,
+                CallLog.Calls.NUMBER, CallLog.Calls.TYPE};
+        String[] argsSelecc = new String[] {"1"};
+
+        Cursor c = getContentResolver().query(
+                calls, //provider URI
+                projection, // Columns we want
+                "type = ?", // WHERE queries
+                argsSelecc, // Parameters of the previous query
+                "date DESC"); // Sorted by date, descending order
 
         if (c != null && c.moveToFirst()) {
             do {
